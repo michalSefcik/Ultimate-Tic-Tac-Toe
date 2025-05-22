@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Super Tic Tac Toe</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #222;
+      color: #fff;
+      text-align: center;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      width: 600px;
+      margin: 20px auto;
+    }
+
+    .mini-board {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2px;
+      background: #333;
+      padding: 3px;
+      transition: background 0.3s;
+    }
+
+    .cell {
+      width: 60px;
+      height: 60px;
+      background: #444;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      cursor: pointer;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    .cell:hover {
+      background: #666;
+    }
+
+    .cell.x {
+      color: #ff4444;
+    }
+
+    .cell.o {
+      color: #44aaff;
+    }
+
+    .mini-board.won-x .cell {
+      background: #f2786f;
+    }
+
+    .mini-board.won-o .cell {
+      background: #26c;
+    }
+
+    .active-x {
+      border: 3px solid #ff4444;
+      box-shadow: 0 0 8px #ff4444;
+    }
+
+    .active-o {
+      border: 3px solid #44aaff;
+      box-shadow: 0 0 8px #44aaff;
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      margin: 10px;
+      cursor: pointer;
+    }
+
+    .scoreboard {
+      margin: 10px;
+      font-size: 18px;
+    }
+
+    .scoreboard span {
+      margin: 0 15px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Super Tic Tac Toe</h1>
+
+  <div class="scoreboard">
+    <span>🟥 X: <strong id="scoreX">0</strong></span>
+    <span>🟦 O: <strong id="scoreO">0</strong></span>
+  </div>
+
+  <div class="board" id="super-board"></div>
+  <p id="status">Hráč na tahu: X</p>
+  <button onclick="resetGame()">🔁 Restart Hry</button>
+  <button onclick="resetScores()">🧹 Reset Skóre</button>
+
+  <script>
+    const board = document.getElementById('super-board');
+    const status = document.getElementById('status');
+    const scoreXEl = document.getElementById('scoreX');
+    const scoreOEl = document.getElementById('scoreO');
+
+    let currentPlayer = 'X';
+    let activeBoard = -1;
+    let miniBoards = [];
+    let score = { X: 0, O: 0 };
+
+    function createBoard() {
+      board.innerHTML = '';
+      miniBoards = [];
+
+      for (let i = 0; i < 9; i++) {
+        const mini = document.createElement('div');
+        mini.classList.add('mini-board');
+        mini.dataset.index = i;
+        const cells = [];
+
+        for (let j = 0; j < 9; j++) {
+          const cell = document.createElement('div');
+          cell.classList.add('cell');
+          cell.dataset.index = j;
+          mini.appendChild(cell);
+          cells.push(cell);
+        }
+
+        board.appendChild(mini);
+        miniBoards.push({ element: mini, cells, winner: null });
+      }
+
+      board.addEventListener('click', handleClick);
+      updateActiveBoards();
+    }
+
+    function resetGame() {
+      currentPlayer = 'X';
+      activeBoard = -1;
+      status.textContent = 'Hráč na tahu: X';
+      createBoard();
+    }
+
+    function resetScores() {
+      score = { X: 0, O: 0 };
+      updateScoreDisplay();
+      resetGame();
+    }
+
+    function updateScoreDisplay() {
+      scoreXEl.textContent = score.X;
+      scoreOEl.textContent = score.O;
+    }
+
+    function checkWin(cells) {
+      const lines = [
+        [0,1,2], [3,4,5], [6,7,8],
+        [0,3,6], [1,4,7], [2,5,8],
+        [0,4,8], [2,4,6]
+      ];
+      for (let line of lines) {
+        const [a, b, c] = line;
+        if (
+          cells[a].textContent &&
+          cells[a].textContent === cells[b].textContent &&
+          cells[a].textContent === cells[c].textContent
+        ) {
+          return cells[a].textContent;
+        }
+      }
+      return null;
+    }
+
+    function handleClick(e) {
+      const cell = e.target;
+      const mini = cell.parentElement;
+      const boardIndex = +mini.dataset.index;
+      const cellIndex = +cell.dataset.index;
+      const miniData = miniBoards[boardIndex];
+
+      if (cell.textContent || (activeBoard !== -1 && activeBoard !== boardIndex)) return;
+
+      cell.textContent = currentPlayer;
+      cell.classList.add(currentPlayer.toLowerCase());
+
+      if (!miniData.winner) {
+        const winner = checkWin(miniData.cells);
+        if (winner) {
+          mini.classList.add(`won-${winner.toLowerCase()}`);
+          miniData.winner = winner;
+        }
+      }
+
+      const overallWinner = checkWin(miniBoards.map(mb => ({ textContent: mb.winner || '' })));
+      if (overallWinner) {
+        status.textContent = `🎉 Hráč ${overallWinner} VYHRÁL CELOU HRU!`;
+        score[overallWinner]++;
+        updateScoreDisplay();
+        board.querySelectorAll('.cell').forEach(c => c.style.pointerEvents = 'none');
+        return;
+      }
+
+      currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+      activeBoard = cellIndex;
+      updateActiveBoards();
+      status.textContent = `Hráč na tahu: ${currentPlayer}`;
+    }
+
+    function updateActiveBoards() {
+      miniBoards.forEach((mb, i) => {
+        mb.element.classList.remove('active-x', 'active-o');
+        if (activeBoard === -1 || activeBoard === i) {
+          mb.element.classList.add(currentPlayer === 'X' ? 'active-x' : 'active-o');
+        }
+      });
+    }
+
+    createBoard();
+  </script>
+
+</body>
+</html>
